@@ -34,10 +34,33 @@ export async function GET(req: Request) {
       }
     }
     
-    // Fetch jobs based on status and view
+    // Fetch all application jobPostIds
+    const applications = await prisma.application.findMany({
+      where: { userId: user.id },
+      select: { jobPostId: true, appliedAt: true }
+    });
+    const appliedJobIds = applications.map(a => a.jobPostId);
+
+    if (view === "applied") {
+      const jobs = await prisma.jobPost.findMany({
+        where: {
+          id: { in: appliedJobIds }
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+      // Attach appliedAt from applications
+      const jobsWithAppliedAt = jobs.map(j => ({
+        ...j,
+        appliedAt: applications.find(a => a.jobPostId === j.id)?.appliedAt
+      }));
+      return NextResponse.json({ jobs: jobsWithAppliedAt });
+    }
+
+    // Fetch jobs based on status and view (excluding applied jobs)
     const jobs = await prisma.jobPost.findMany({
       where: { 
         userId: user.id,
+        id: { notIn: appliedJobIds },
         ...(status === "expired" 
           ? { deadline: { lt: now } }
           : { 

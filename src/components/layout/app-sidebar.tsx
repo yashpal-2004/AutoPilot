@@ -20,7 +20,7 @@ const navigation = [
   { name: "Jobs", href: "/dashboard/jobs", icon: Briefcase },
   { name: "All Jobs History", href: "/dashboard/jobs/history", icon: ClipboardList },
   { name: "Past Deadlines", href: "/dashboard/jobs/expired", icon: Clock },
-  { name: "Tracker", href: "/dashboard/tracker", icon: LayoutDashboard },
+  { name: "Applied Jobs", href: "/dashboard/tracker", icon: Briefcase },
   { name: "Replies", href: "/dashboard/replies", icon: MessageSquare },
   { name: "Resumes", href: "/dashboard/resumes", icon: FileText },
   { name: "Autopilot", href: "/dashboard/autopilot", icon: Zap },

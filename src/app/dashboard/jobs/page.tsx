@@ -61,6 +61,27 @@ export default function JobsPage() {
     return "text-rose-600 bg-rose-50 border-rose-200";
   };
 
+  const handleApply = async (jobId: string, companyName: string) => {
+    try {
+      toast.info(`Launching automation for ${companyName}...`);
+      const res = await fetch("/api/jobs/apply", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ jobId }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        toast.success(`Successfully applied to ${companyName}!`);
+        // Remove from list or show applied state
+        fetchJobs();
+      } else {
+        throw new Error(data.error);
+      }
+    } catch (e: any) {
+      toast.error(e.message || "Automation failed");
+    }
+  };
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -151,7 +172,10 @@ export default function JobsPage() {
                   View on Internshala <ExternalLink className="w-3.5 h-3.5" />
                 </a>
                 
-                <Button className="rounded-xl shadow-sm bg-slate-900 hover:bg-slate-800">
+                <Button 
+                  onClick={() => handleApply(job.id, job.companyName)}
+                  className="rounded-xl shadow-sm bg-slate-900 hover:bg-slate-800"
+                >
                   <Star className="w-4 h-4 mr-2" />
                   Auto-Apply
                 </Button>

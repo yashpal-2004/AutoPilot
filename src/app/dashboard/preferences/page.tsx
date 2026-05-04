@@ -17,7 +17,9 @@ import {
   Loader2, 
   Lock,
   Eye,
-  EyeOff
+  EyeOff,
+  Zap,
+  RefreshCw
 } from "lucide-react";
 
 export default function PreferencesPage() {
@@ -255,6 +257,59 @@ export default function PreferencesPage() {
         </div>
 
         <div className="space-y-6">
+          <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden bg-slate-900 text-white">
+            <div className="px-6 py-5 flex items-center justify-between border-b border-white/10">
+              <div className="flex items-center gap-3">
+                <div className="w-8 h-8 bg-amber-500 rounded-lg flex items-center justify-center">
+                  <Zap className="w-4 h-4 text-white fill-white" />
+                </div>
+                <div>
+                  <h3 className="font-bold">AutoPilot Mode</h3>
+                  <p className="text-[10px] text-slate-400">Autonomous Scrape & Apply</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input 
+                    type="checkbox" 
+                    checked={prefs.autopilotEnabled} 
+                    onChange={e => setPrefs({...prefs, autopilotEnabled: e.target.checked})}
+                    className="sr-only peer" 
+                  />
+                  <div className="w-11 h-6 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+            </div>
+            <CardContent className="p-6 space-y-4">
+              <p className="text-xs text-slate-400 leading-relaxed">
+                When enabled, the AutoPilot will scan for jobs every 6 hours and automatically apply to any internship with a match score above your threshold.
+              </p>
+              
+              <div className="flex gap-3">
+                <Button 
+                  onClick={async () => {
+                    try {
+                      toast.info("Starting autonomous cycle...");
+                      const res = await fetch("/api/preferences", {
+                        method: "POST",
+                        body: JSON.stringify({ action: "trigger_autopilot" })
+                      });
+                      if ((await res.json()).success) {
+                        toast.success("Autonomous cycle is running!");
+                      }
+                    } catch (e) {
+                      toast.error("Failed to start cycle");
+                    }
+                  }}
+                  className="flex-1 rounded-xl bg-white/10 hover:bg-white/20 border-white/10 text-white font-bold"
+                >
+                  <RefreshCw className="w-4 h-4 mr-2" />
+                  Trigger Now
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+
           <Card className="rounded-3xl border-slate-200 shadow-sm overflow-hidden">
             <div className="bg-slate-900 px-6 py-5 flex items-center justify-between text-white">
               <div className="flex items-center gap-3">

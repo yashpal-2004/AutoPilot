@@ -171,15 +171,21 @@ export class ApplyService {
         throw new Error("Failed to click the final Submit button. The application was NOT sent.");
       }
       
+      // Calculate score for the alert
+      const { ScoringService } = await import("./scoring.service");
+      const userPrefs = await prisma.userPreferences.findFirst({ where: { userId: job.userId } });
+      const userResumes = await prisma.resume.findMany({ where: { userId: job.userId } });
+      const scoring = await ScoringService.calculateScore(job, userPrefs!, userResumes);
+
       // Update Database
       await prisma.application.create({
         data: {
-          userId: job.userId,
           jobPostId: job.id,
+          userId: job.userId,
+          matchScore: scoring.score,
           resumeId: resume?.id,
           status: "APPLIED",
-          matchScore: job.matchScore || 0,
-          appliedAt: new Date(),
+          appliedAt: new Date()
         }
       });
 
@@ -187,7 +193,7 @@ export class ApplyService {
       await TelegramService.sendApplicationAlert({
         company: job.companyName || "Unknown",
         role: job.title,
-        score: job.matchScore || 0,
+        score: scoring.score,
         resume: resume?.name || "Default",
         status: "Applied Successfully"
       });

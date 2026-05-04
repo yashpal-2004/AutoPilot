@@ -45,7 +45,8 @@ export async function POST(req: Request) {
           avoidKeywordsJson: preferences.avoidKeywords,
           blockedCompaniesJson: preferences.blockedCompanies,
           remoteOnly: preferences.remoteOnly,
-          avoidUnpaid: preferences.avoidUnpaid
+          avoidUnpaid: preferences.avoidUnpaid,
+          autopilotEnabled: preferences.autopilotEnabled
         },
         create: {
           userId: user.id,
@@ -57,9 +58,17 @@ export async function POST(req: Request) {
           avoidKeywordsJson: preferences.avoidKeywords,
           blockedCompaniesJson: preferences.blockedCompanies,
           remoteOnly: preferences.remoteOnly,
-          avoidUnpaid: preferences.avoidUnpaid
+          avoidUnpaid: preferences.avoidUnpaid,
+          autopilotEnabled: preferences.autopilotEnabled
         }
       });
+    }
+
+    if (action === "trigger_autopilot") {
+      const { AutoPilotService } = await import("@/server/services/autopilot.service");
+      // Trigger background run without awaiting (non-blocking)
+      AutoPilotService.runCycle();
+      return NextResponse.json({ success: true, message: "AutoPilot cycle started in the background." });
     }
 
     if (action === "save_telegram") {

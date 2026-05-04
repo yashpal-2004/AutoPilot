@@ -25,13 +25,20 @@ function decrypt(text: string) {
 export class TelegramService {
   private static async getBotConfig() {
     const config = await prisma.telegramNotificationConfig.findFirst();
-    if (!config || !config.telegramBotTokenEnc || !config.telegramChatIdEnc) return null;
     
-    return {
-      botToken: decrypt(config.telegramBotTokenEnc),
-      chatId: decrypt(config.telegramChatIdEnc),
-      enabled: config.telegramEnabled
-    };
+    const botToken = config?.telegramBotTokenEnc 
+      ? decrypt(config.telegramBotTokenEnc) 
+      : process.env.TELEGRAM_BOT_TOKEN;
+      
+    const chatId = config?.telegramChatIdEnc 
+      ? decrypt(config.telegramChatIdEnc) 
+      : process.env.TELEGRAM_CHAT_ID;
+      
+    const enabled = config ? config.telegramEnabled : (!!botToken && !!chatId);
+
+    if (!botToken || !chatId) return null;
+    
+    return { botToken, chatId, enabled };
   }
 
   static async sendMessage(message: string) {

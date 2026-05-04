@@ -3,13 +3,14 @@
 import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/ui/page-header";
 import { Button } from "@/components/ui/button";
-import { Search, MapPin, Briefcase, DollarSign, ExternalLink, RefreshCw, Star, Loader2, Calendar } from "lucide-react";
+import { Search, MapPin, Briefcase, DollarSign, ExternalLink, RefreshCw, Star, Loader2, Calendar, Building2, Clock, Zap } from "lucide-react";
 import { EmptyState } from "@/components/ui/empty-state";
 import { toast } from "sonner";
 
 export default function JobsPage() {
   const [jobs, setJobs] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [meta, setMeta] = useState<any>(null);
   const [scraping, setScraping] = useState(false);
 
   const fetchJobs = async () => {
@@ -19,6 +20,7 @@ export default function JobsPage() {
       const data = await res.json();
       if (data.success) {
         setJobs(data.jobs);
+        setMeta(data.meta || null);
       } else {
         throw new Error(data.error);
       }
@@ -95,6 +97,12 @@ export default function JobsPage() {
             )}
           </div>
           <p className="text-slate-500">Explore live internships matching your default resume profile.</p>
+          {meta && meta.skipped > 0 && (
+            <p className="text-xs text-slate-400 mt-2 flex items-center">
+              <Zap className="w-3 h-3 mr-1 text-amber-500 fill-amber-500" />
+              AutoPilot filtered out {meta.skipped} low-quality or scam jobs.
+            </p>
+          )}
         </div>
         
         <Button onClick={handleScrape} disabled={scraping} className="rounded-xl shadow-sm">
@@ -131,26 +139,29 @@ export default function JobsPage() {
               <div className="flex justify-between items-start gap-4 mb-4">
                 <div>
                   <h3 className="text-lg font-bold text-slate-900 mb-1">{job.title}</h3>
-                  <div className="text-blue-600 font-medium text-sm mb-3">{job.companyName}</div>
+                  <div className="flex items-center gap-1.5 text-blue-600 font-medium text-sm mb-3">
+                    <Building2 className="w-3.5 h-3.5" />
+                    {job.companyName}
+                  </div>
                   
                   <div className="flex flex-wrap items-center gap-4 text-sm text-slate-600">
                     <div className="flex items-center gap-1.5">
                       <MapPin className="w-4 h-4 text-slate-400" />
                       {job.location}
                     </div>
-                    <div className="flex items-center gap-1.5">
-                      <DollarSign className="w-4 h-4 text-slate-400" />
+                    <div className="flex items-center gap-1.5 text-emerald-600 font-bold">
+                      <DollarSign className="w-4 h-4" />
                       {job.stipend}
                     </div>
                     {job.deadline ? (
-                      <div className="flex items-center gap-1.5 text-rose-600 font-medium">
-                        <Calendar className="w-4 h-4" />
+                      <div className="flex items-center gap-1.5 text-slate-500">
+                        <Calendar className="w-4 h-4 text-slate-400" />
                         Apply by {new Date(job.deadline).toLocaleDateString()}
                       </div>
                     ) : (
-                      <div className="flex items-center gap-1.5 text-slate-400 font-medium">
+                      <div className="flex items-center gap-1.5 text-slate-400">
                         <Calendar className="w-4 h-4" />
-                        Rolling Deadline
+                        Rolling
                       </div>
                     )}
                   </div>
@@ -160,6 +171,30 @@ export default function JobsPage() {
                   <span className="text-xs font-semibold uppercase tracking-wider mb-0.5">Match</span>
                   <span className="text-xl font-bold">{job.matchScore}%</span>
                 </div>
+              </div>
+
+              {/* Match Insights */}
+              <div className="space-y-3 mb-6 bg-slate-50/50 p-4 rounded-xl border border-slate-100">
+                {job.reasons && job.reasons.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {job.reasons.slice(0, 3).map((reason: string, idx: number) => (
+                      <div key={idx} className="flex items-center text-[11px] bg-white text-emerald-700 px-2 py-1 rounded-md border border-emerald-100 shadow-sm font-medium">
+                        <Star className="w-3 h-3 mr-1.5 fill-emerald-500 text-emerald-500" />
+                        {reason}
+                      </div>
+                    ))}
+                  </div>
+                )}
+                {job.risks && job.risks.length > 0 && (
+                  <div className="flex flex-wrap gap-2">
+                    {job.risks.slice(0, 2).map((risk: string, idx: number) => (
+                      <div key={idx} className="flex items-center text-[11px] bg-white text-amber-700 px-2 py-1 rounded-md border border-amber-100 shadow-sm font-medium">
+                        <Zap className="w-3 h-3 mr-1.5 text-amber-500" />
+                        {risk}
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
 
               <div className="flex items-center justify-between pt-6 border-t border-slate-100 mt-4">

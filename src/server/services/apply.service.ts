@@ -158,7 +158,7 @@ export class ApplyService {
           });
         });
 
-        const isElement = await page.evaluate(el => el !== null, submitBtn);
+        const isElement = await page.evaluate((el:any) => el !== null, submitBtn);
         if (isElement) {
           // This actually executes the application submission!
           await submitBtn.asElement()?.click();

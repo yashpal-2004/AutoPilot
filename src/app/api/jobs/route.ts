@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import prisma from "@/lib/db/prisma";
+import { ScoringService } from "@/server/services/scoring.service";
 
 export async function GET(req: Request) {
   try {
@@ -7,17 +8,13 @@ export async function GET(req: Request) {
     const status = searchParams.get("status") || "active";
     const view = searchParams.get("view") || "latest"; // 'latest' or 'history'
 
-    const user = await prisma.user.findFirst();
-    if (!user) {
-      return NextResponse.json({ error: "User not found" }, { status: 401 });
-    }
-
-    // Fetch the default resume for matching
-    const resume = await prisma.resume.findFirst({
-      where: { userId: user.id, isDefault: true },
+    const user = await prisma.user.findFirst({
+      include: { preferences: true, resumes: true }
     });
 
-    const userSkills: string[] = Array.isArray(resume?.skillsJson) ? (resume?.skillsJson as string[]) : [];
+    if (!user || !user.preferences) {
+      return NextResponse.json({ error: "User or preferences not found" }, { status: 401 });
+    }
 
     const now = new Date();
     
@@ -29,12 +26,10 @@ export async function GET(req: Request) {
         orderBy: { createdAt: 'desc' }
       });
       if (latestJob) {
-        // Any job fetched within 10 minutes of the absolute latest job is considered part of the "latest session"
         latestThreshold = new Date(latestJob.createdAt.getTime() - 10 * 60000);
       }
     }
     
-    // Fetch all application jobPostIds
     const applications = await prisma.application.findMany({
       where: { userId: user.id },
       select: { jobPostId: true, appliedAt: true }
@@ -43,32 +38,24 @@ export async function GET(req: Request) {
 
     if (view === "applied") {
       const jobs = await prisma.jobPost.findMany({
-        where: {
-          id: { in: appliedJobIds }
-        },
+        where: { id: { in: appliedJobIds } },
         orderBy: { createdAt: 'desc' }
       });
-      // Attach appliedAt from applications
       const jobsWithAppliedAt = jobs.map(j => ({
         ...j,
         appliedAt: applications.find(a => a.jobPostId === j.id)?.appliedAt
       }));
-      return NextResponse.json({ jobs: jobsWithAppliedAt });
+      return NextResponse.json({ success: true, jobs: jobsWithAppliedAt });
     }
 
-    // Fetch jobs based on status and view (excluding applied jobs)
-    const jobs = await prisma.jobPost.findMany({
+    const rawJobs = await prisma.jobPost.findMany({
       where: { 
         userId: user.id,
         id: { notIn: appliedJobIds },
         ...(status === "expired" 
           ? { deadline: { lt: now } }
           : { 
-              OR: [
-                { deadline: null },
-                { deadline: { gte: now } }
-              ],
-              companyName: { notIn: ["TechCorp Inc.", "Innovate AI"] },
+              OR: [{ deadline: null }, { deadline: { gte: now } }],
               ...(view === "latest" ? { createdAt: { gte: latestThreshold } } : {})
             }
         )
@@ -76,34 +63,38 @@ export async function GET(req: Request) {
       orderBy: { createdAt: 'desc' }
     });
 
-    // Calculate match score
-    const jobsWithMatch = jobs.map(job => {
-      const jobSkills: string[] = Array.isArray(job.skillsJson) ? (job.skillsJson as string[]) : [];
-      let matchScore = 0;
-      
-      if (jobSkills.length > 0 && userSkills.length > 0) {
-        const matchingSkills = jobSkills.filter(s => userSkills.includes(s));
-        matchScore = Math.round((matchingSkills.length / jobSkills.length) * 100);
-      } else {
-        // Deterministic pseudo-random score based on job title length and characters so it stays stable
-        let hash = 0;
-        for (let i = 0; i < job.title.length; i++) {
-          hash = job.title.charCodeAt(i) + ((hash << 5) - hash);
-        }
-        matchScore = Math.abs(hash) % 55 + 40; // 40 to 95
-      }
-
+    // Apply Intelligent Scoring
+    const scoredJobs = await Promise.all(rawJobs.map(async (job) => {
+      const scoring = await ScoringService.calculateScore(job, user.preferences!, user.resumes);
       return {
         ...job,
-        matchScore
+        matchScore: scoring.score,
+        reasons: scoring.reasons,
+        risks: scoring.risks,
+        recommendedResumeId: scoring.recommendedResumeId,
+        shouldSkip: scoring.shouldSkip,
+        skipReason: scoring.skipReason
       };
+    }));
+
+    // Filter out low-quality jobs for 'latest' view
+    const filteredJobs = view === "latest" 
+      ? scoredJobs.filter(j => !j.shouldSkip)
+      : scoredJobs;
+
+    // Sort by match score
+    filteredJobs.sort((a, b) => b.matchScore - a.matchScore);
+
+    return NextResponse.json({ 
+      success: true, 
+      jobs: filteredJobs, 
+      meta: {
+        totalFound: rawJobs.length,
+        skipped: rawJobs.length - filteredJobs.length
+      }
     });
-
-    // Sort by match score descending
-    jobsWithMatch.sort((a, b) => b.matchScore - a.matchScore);
-
-    return NextResponse.json({ success: true, jobs: jobsWithMatch, resumeFound: !!resume });
   } catch (error: any) {
+    console.error("Jobs API Error:", error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

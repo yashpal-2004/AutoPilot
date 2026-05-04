@@ -1,4 +1,5 @@
 import prisma from "@/lib/db/prisma";
+import { TelegramService } from "@/server/services/telegram.service";
 
 const puppeteer = require('puppeteer-extra');
 const StealthPlugin = require('puppeteer-extra-plugin-stealth');
@@ -169,6 +170,7 @@ export class ApplyService {
       } catch (e) {
         throw new Error("Failed to click the final Submit button. The application was NOT sent.");
       }
+      
       // Update Database
       await prisma.application.create({
         data: {
@@ -176,15 +178,33 @@ export class ApplyService {
           jobPostId: job.id,
           resumeId: resume?.id,
           status: "APPLIED",
-          matchScore: 95,
+          matchScore: job.matchScore || 0,
           appliedAt: new Date(),
         }
+      });
+
+      // Phase 8: Send Telegram Alert
+      await TelegramService.sendApplicationAlert({
+        company: job.companyName || "Unknown",
+        role: job.title,
+        score: job.matchScore || 0,
+        resume: resume?.name || "Default",
+        status: "Applied Successfully"
       });
 
       return { success: true, roleCategory, usedResume: resume?.name, pitch };
 
     } catch (error: any) {
       console.error("Apply Error:", error);
+      
+      // Phase 8: Send Error Alert
+      if (error.message.includes("Login") || error.message.includes("Captcha")) {
+        await TelegramService.sendErrorAlert(
+          "CAPTCHA or Login Required",
+          "Open your dashboard and manually complete the login in the Chromium window."
+        );
+      }
+      
       throw error;
     } finally {
       if (browser) {

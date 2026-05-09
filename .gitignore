@@ -1,8 +1,6 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
-
-# dependencies
-/node_modules
-/.pnp
+# Dependencies
+node_modules/
+.pnp
 .pnp.*
 .yarn/*
 !.yarn/patches
@@ -10,38 +8,42 @@
 !.yarn/releases
 !.yarn/versions
 
-# testing
-/coverage
-
-# next.js
-/.next/
-/out/
-
-# production
-/build
-
-# misc
-.DS_Store
+# Environment & Secrets
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
 *.pem
+*.json
 
-# debug
+# Puppeteer & Automation
+.internshala_session/
+screenshots/
+logs/
+
+# Build & Production
+dist/
+build/
+.next/
+out/
+/frontend/dist
+/server/dist
+
+# IDE & OS
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Debug logs
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
-
-# vercel
+# Misc
 .vercel
-
-# typescript
 *.tsbuildinfo
 next-env.d.ts
-
-/src/generated/prisma
-
-# Automation Data
-.internshala_session/
-parse-detail.js
